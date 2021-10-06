@@ -41,16 +41,15 @@ def main():
         print("Comunicação client aberta! \n")
 
         # Carrega dados a serem enviados
-        file = load_file('arquivo.png')
+        file = load_file('./data/small.png')
         num_of_packs = number_of_packs(len(file))
         payloads = build_payloads(file)
         print("Dados carregados. Iniciando tentativa de comunicação com servidor...")
-        
+
         while handshake:
             # Prepara pack do handshake
             head = build_head(type_message=1, len_packs=num_of_packs)
-            payload = b''
-            init_pack = head + payload + EOP
+            init_pack = b''.join([head, EOP])
 
             # Envia o handshake e inicia contagem do tempo
             com1.sendData(init_pack)
@@ -63,28 +62,27 @@ def main():
                     print("Tentativa de contato sem resposta. Deseja tentar novamente? (S/N)")
                     choice = input()
                     if ((choice == 'S') or (choice == 's')):
-                        pass
-                    
-                    
-                    #TODO
-                    
+                        print("Tentando contatar server novamente...")
                     
                     elif ((choice == 'N') or (choice == 'n')):
                         print("\nTudo bem. Vamos encerrar a comunicação...")
                         handshake = False
                         break
 
-            rx, n_rx = com1.getData(len(init_pack))
-            rx_info = extract_datagram_info(rx)
-            if ((rx_info["type_message"] == 2) and (rx_info["eop"] == EOP)):
-                handshake = False
-                transfer_data = True
-                print("Servidor contatado! Iniciando envio de dados...\n")
-            elif rx_info["eop"] != EOP:
-                print("EOP difere do esperado, algum erro ocorreu. Tentando novamente...")
+            # Analisa resposta ao receber o pacote inteiro
+            if com1.rx.getBufferLen() == len(init_pack):
+                rx, n_rx = com1.getData(len(init_pack))
+                rx_info = extract_datagram_info(rx)
+                if ((rx_info["type_message"] == 2) and (rx_info["eop"] == EOP)):
+                    handshake = False
+                    transfer_data = True
+                    print("Servidor contatado! Iniciando envio de dados...\n")
+                elif rx_info["eop"] != EOP:
+                    print("EOP difere do esperado, algum erro ocorreu. Tentando novamente...")
 
         counter = 1
         last_pack_sent = counter - 1
+
         while transfer_data:
             if (counter <= num_of_packs):
                 # Prepara pacote e executa tentativa de envio

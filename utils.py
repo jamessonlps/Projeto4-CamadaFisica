@@ -95,9 +95,11 @@ def extract_datagram_info(datagram:bytes):
         "last_pack_received": datagram[7], # h7
         "crc1":               datagram[8], # h8
         "crc2":               datagram[9], # h9
-        "payload":            datagram[10:-4],
         "eop":                datagram[-4:]
     }
+    if len(datagram) > 14:
+        info["payload"] = datagram[10:-4]
+    
     return info
 
 
