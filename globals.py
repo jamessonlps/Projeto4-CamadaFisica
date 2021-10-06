@@ -1,3 +1,4 @@
 MAX_SIZE_PAYLOAD = 114
+EOP = b'\x00\xff\x0f\xf0'
 ID_SERVER = 1
 ID_CLIENT = 2

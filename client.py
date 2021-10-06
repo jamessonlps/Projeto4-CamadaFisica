@@ -2,8 +2,8 @@ import time
 import numpy         as np
 from   enlace    import *
 from   random        import randint
-from   utils  import build_datagram, load_file, number_of_packs
-from   config import *
+from   utils  import build_head, build_payloads, extract_datagram_info, load_file, number_of_packs
+from .globals import *
 
 """
 Para verificar as portas no seu dispositivo:
@@ -29,6 +29,10 @@ head template:
 serialName = "COM7"                    # Windows
 
 
+handshake = True
+transfer_data = False
+try_again = False
+
 def main():
     try:
         # Cria objeto enlace
@@ -39,7 +43,118 @@ def main():
         # Carrega dados a serem enviados
         file = load_file('arquivo.png')
         num_of_packs = number_of_packs(len(file))
+        payloads = build_payloads(file)
+        print("Dados carregados. Iniciando tentativa de comunicação com servidor...")
         
+        while handshake:
+            # Prepara pack do handshake
+            head = build_head(type_message=1, len_packs=num_of_packs)
+            payload = b''
+            init_pack = head + payload + EOP
+
+            # Envia o handshake e inicia contagem do tempo
+            com1.sendData(init_pack)
+            t0_handshake = time.time()
+
+            # Aguarda resposta do server
+            while (com1.rx.getBufferLen() < len(init_pack)):
+                now = time.time()
+                if now - t0_handshake >= 5:
+                    print("Tentativa de contato sem resposta. Deseja tentar novamente? (S/N)")
+                    choice = input()
+                    if ((choice == 'S') or (choice == 's')):
+                        pass
+                    
+                    
+                    #TODO
+                    
+                    
+                    elif ((choice == 'N') or (choice == 'n')):
+                        print("\nTudo bem. Vamos encerrar a comunicação...")
+                        handshake = False
+                        break
+
+            rx, n_rx = com1.getData(len(init_pack))
+            rx_info = extract_datagram_info(rx)
+            if ((rx_info["type_message"] == 2) and (rx_info["eop"] == EOP)):
+                handshake = False
+                transfer_data = True
+                print("Servidor contatado! Iniciando envio de dados...\n")
+            elif rx_info["eop"] != EOP:
+                print("EOP difere do esperado, algum erro ocorreu. Tentando novamente...")
+
+        counter = 1
+        last_pack_sent = counter - 1
+        while transfer_data:
+            if (counter <= num_of_packs):
+                # Prepara pacote e executa tentativa de envio
+                head = build_head(
+                    type_message=3, 
+                    len_packs=num_of_packs, 
+                    pack_sending=counter, 
+                    type_ref=len(payloads[last_pack_sent])
+                )
+                payload = payloads[last_pack_sent]
+                datagram = b''.join([head, payload, EOP])
+                print(f"Enviando pacote {counter} de {num_of_packs}...")
+
+                com1.sendData(datagram)
+                time.sleep(0.1)
+
+                # Inicia os dois contadores (um de 5 e outro de 20 segundos)
+                timer_1 = time.time()
+                timer_2 = time.time()
+
+                # Contagem de tempo enquanto aguarda resposta do server
+                while com1.rx.getBufferLen() < 13:
+                    now = time.time()
+                    # Se o contador 1 passar de 5s e o client não receber confirmação,
+                    # ele reenvia o mesmo pacote
+                    if now - timer_1 > 5:
+                        print("\nA resposta do servidor está demorando...")
+                        print(f"Reenviando pacote {counter}...")
+                        com1.sendData(datagram)
+                        # atualiza contador 1
+                        time.sleep(0.1)
+                        timer_1 = time.time()
+                    
+                    # Se o contador 2 passar de 20 segundos, envia uma mensagem do 
+                    # tipo 5 (time out) e finaliza a conexão
+                    elif now - timer_2 > 20:
+                        print("Limite de tempo excedido. Encerrando comunicação...")
+                        head = build_head(type_message=5)
+                        datagram = b''.join([head, b'', EOP])
+                        com1.sendData(datagram)
+                        com1.disable()
+                        break
+
+                # Verifica resposta recebida do server
+                if com1.rx.getBufferLen() == 13:
+                    rx, n_rx = com1.getData(13)
+                    rx_info = extract_datagram_info(datagram=rx)
+                    # Se o envio foi ok, passa para o próximo pack
+                    if ((rx_info["type_message"] == 4) and rx_info["eop"] == EOP):
+                        print(f"Pacote {counter} enviado com sucesso. Preparando pacote {counter+1}...")
+                        counter += 1
+                        last_pack_sent = counter - 1
+                    
+                    # Se deu erro, não atualiza o contador
+                    elif (rx_info["type_message"] == 6):
+                        print(f"Erro ao enviar o pacote {counter}. Reenviando...\n")
+
+                    elif (rx_info["eop"] != EOP):
+                        print("EOP difere do esperado. Comunicação comprometida...")
+                        break
+
+                else:
+                    print("Um erro inesperado aconteceu.")
+                    print(f"Reenviando pacote {counter}...")
+
+            else:
+                print("O envio dos dados foi concluído!")
+                print("Encerrando comunicação...")
+        
+        com1.disable()
 
     except KeyboardInterrupt:
         print("Fechamento forçado")

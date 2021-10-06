@@ -1,7 +1,5 @@
 import numpy as np
-from globals import *
-
-EOP = b'\x00\xff\x0f\xf0'
+from .globals import *
 
 
 def load_file(path):
