@@ -1,11 +1,11 @@
 import numpy as np
-from .globals import *
+from constants import *
 
 
 def load_file(path):
     with open(path, 'rb') as file:
         content = file.read()
-        return bytearray(content)
+        return content
 
 
 
@@ -39,8 +39,8 @@ def build_payloads(file:bytes, max_size:int=MAX_SIZE_PAYLOAD):
         else:
             payload = file[ i*max_size : (i+1)*max_size ]
         # os payloads menores que 114 são preenchidos com b'\x00'
-        if len(payload) < max_size:
-            payload = b''.join([payload, b'\x00'*(max_size - len(payload))])
+        # if len(payload) < max_size:
+        #     payload = b''.join([payload, b'\x00'*(max_size - len(payload))])
         
         payloads.append(payload)
     
@@ -57,9 +57,9 @@ def build_packs(head:bytes, payloads:list):
 
 
 def build_head(
-    type_message,
-    id_client=ID_CLIENT,
-    id_server=ID_SERVER,
+    type_message:int,
+    id_client:int=ID_CLIENT,
+    id_server:int=ID_SERVER,
     len_packs:int=0,
     pack_sending:int=0,
     type_ref:int=0,
@@ -74,7 +74,9 @@ def build_head(
         foram definidos como zero por dependerem do tipo de mensagem.
     """
     params = [type_message, id_client, id_server, len_packs, pack_sending, type_ref, resend_pack, last_pack_received, crc1, crc2]
-    head = [int_to_bytes(number=n) for n in params]
+    head = []
+    for n in params:
+        head.append(n.to_bytes(1, 'little'))
     return b''.join(head)
 
 
@@ -94,9 +96,14 @@ def extract_datagram_info(datagram:bytes):
         "resend_pack":        datagram[6], # h6
         "last_pack_received": datagram[7], # h7
         "crc1":               datagram[8], # h8
-        "crc2":               datagram[9], # h9
-        "eop":                datagram[-4:]
+        "crc2":               datagram[9]  # h9
     }
+    for key, value in info.items():
+        new_value = int.from_bytes(value, 'little')
+        info[key] = new_value
+    
+    if len(datagram) > 10:
+        info["eop"] = datagram[-4:]
     if len(datagram) > 14:
         info["payload"] = datagram[10:-4]
     
@@ -104,12 +111,12 @@ def extract_datagram_info(datagram:bytes):
 
 
 
-def int_to_bytes(number:int):
+def int_to_bytes(number):
     """
         Converte inteiro para bytes
         (evitar repetição do 'byteorder' no código)
     """
-    return int.to_bytes(number, byteorder='little')
+    return number.to_bytes(1, byteorder='little')
 
 
 
@@ -118,4 +125,4 @@ def bytes_to_int(number:bytes):
         Converte bytes para inteiro
         (evitar repetição do 'byteorder' no código)
     """
-    return int.from_bytes(number, byteorder='little')
+    return int.from_bytes(bytes=number, byteorder='little')

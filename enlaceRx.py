@@ -61,7 +61,7 @@ class RX(object):
         return(len(self.buffer))
 
 
-    def getAllBuffer(self, len):
+    def getAllBuffer(self):
         self.threadPause()
         b = self.buffer[:]
         self.clearBuffer()

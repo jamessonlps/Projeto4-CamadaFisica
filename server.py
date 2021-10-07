@@ -3,7 +3,7 @@ import numpy         as np
 from   enlace    import *
 from   random        import randint
 from   utils  import build_head, build_payloads, extract_datagram_info, load_file, number_of_packs
-from .globals import *
+from constants import *
 
 """
 Para verificar as portas no seu dispositivo:
@@ -36,22 +36,30 @@ def main():
     try:
         com2 = enlace(serialName)
         com2.enable()
+        # com2.tx.fisica.flush()
+        com2.rx.fisica.flush()
         print("Servidor inicializado!")
         print("\nAguardando tentativa de contato...")
 
         while handshake:
             # Fica em um loop enquanto não recebe handshake
-            while com2.rx.getBufferLen() < 13:
+            while com2.rx.getBufferLen() < 14:
+                time.sleep(0.2)
                 pass
 
-            if com2.rx.getBufferLen() == 13:
-                rx, n_rx = com2.getData(13)
+            if com2.rx.getBufferLen() >= 14:
+                rx, n_rx = com2.getData(14)
                 rx_info = extract_datagram_info(rx)
+                
                 id_server = rx_info["id_server"]
+                len_packs = rx_info["len_packs"]
+                
                 # Verifica tipo de mensagem e destinatário
                 if ((rx_info["type_message"] == 1) and (id_server == ID_SERVER)):
                     print("Tentativa de contato recebida!")
-                    len_packs = rx_info["len_packs"]
+                    handshake = False
+                    receiving_data = True
+                    time.sleep(1)
                     
                     # Envia confirmação ao client
                     head = build_head(type_message=2)
@@ -59,14 +67,13 @@ def main():
                     com2.sendData(datagram)
 
                     # Fica no loop enquanto aguarda conclusão do envio
-                    while com2.tx.getStatus() != 13:
+                    while com2.tx.getStatus() < 14:
+                        time.sleep(0.2)
                         pass
 
-                    print(f"Comunicação com client ok! Preparando recepção de {len_packs}")
+                    print(f"Comunicação com client ok! Preparando recepção de {len_packs} pacotes...")
+                    break
 
-                    handshake = False
-                    receiving_data = True
-                    time.sleep(1)
 
                 elif id_server != ID_SERVER:
                     print(f"Erro: ID esperado: {ID_SERVER}. ID recebido: {id_server}")
@@ -82,8 +89,8 @@ def main():
                 pass
 
             # Head recebido
-            head, n_head = com2.rx.getNData(10)
-            head_info = extract_datagram_info(rx)
+            head, n_head = com2.getData(10)
+            head_info = extract_datagram_info(head)
 
             # extraindo infos importantes
             type_message   = head_info["type_message"]
@@ -91,10 +98,12 @@ def main():
             pack_receiving = head_info["pack_sending"]
             len_payload    = head_info["type_ref"]
 
+
             # Verifica mensagem recebida
             if ((type_message == 3) and (counter == pack_receiving)):
-                print(f"Recebendo pacote {counter}")
+                print(f"Recebendo pacote {counter} de {len_packs}")
                 len_datagram = 14 + len_payload
+                
                 while com2.rx.getBufferLen() < len_datagram:
                     # Se passar 20s no contador 2 e o pacote não for recebido,
                     # o servidor encerra comunicação
@@ -106,6 +115,7 @@ def main():
                         com2.sendData(time_response)
                         
                         time.sleep(0.2)
+                        receiving_data = False
                         break
 
                     # Se passar 2s no contador 1 e o pacote não for recebido,
