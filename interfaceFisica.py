@@ -20,23 +20,20 @@ class fisica(object):
         self.name        = name
         self.port        = None
         self.baudrate    = 115200
-        #self.baudrate    = 9600
+        #self.baudrate    = 96500
         self.bytesize    = serial.EIGHTBITS
         self.parity      = serial.PARITY_NONE
         self.stop        = serial.STOPBITS_ONE
         self.timeout     = 0.1
         self.rxRemain    = b""
 
-
     def open(self):
-        self.port = serial.Serial(
-            self.name,
-            self.baudrate,
-            self.bytesize,
-            self.parity,
-            self.stop,
-            self.timeout
-        )
+        self.port = serial.Serial(self.name,
+                                  self.baudrate,
+                                  self.bytesize,
+                                  self.parity,
+                                  self.stop,
+                                  self.timeout)
 
 
     def close(self):

@@ -26,7 +26,7 @@ class RX(object):
 
     def thread(self): 
         while not self.threadStop:
-            if (self.threadMutex == True):
+            if(self.threadMutex == True):
                 rxTemp, nRx = self.fisica.read(self.READLEN)
                 if (nRx > 0):
                     self.buffer += rxTemp  
@@ -85,3 +85,5 @@ class RX(object):
 
     def clearBuffer(self):
         self.buffer = b""
+
+

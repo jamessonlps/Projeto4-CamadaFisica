@@ -61,7 +61,7 @@ class TX(object):
 
     def getStatus(self):
         return(self.transLen)
-
+        
 
     def getIsBussy(self):
         return(self.threadMutex)

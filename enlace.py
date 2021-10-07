@@ -25,12 +25,10 @@ class enlace(object):
         self.tx          = TX(self.fisica)
         self.connected   = False
 
-
     def enable(self):
         self.fisica.open()
         self.rx.threadStart()
         self.tx.threadStart()
-
 
     def disable(self):
         self.rx.threadKill()
@@ -38,11 +36,9 @@ class enlace(object):
         time.sleep(1)
         self.fisica.close()
 
-
     def sendData(self, data):
         self.tx.sendBuffer(data)
-
-
+        
     def getData(self, size):
         data = self.rx.getNData(size)
         return(data, len(data))
