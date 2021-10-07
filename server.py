@@ -30,9 +30,9 @@ serialName = "COM8"                    # Windows
 
 def main():
     try:
-        com1 = enlace(serialName)
-        com1.enable()
-        com1.rx.fisica.flush()
+        com2 = enlace(serialName)
+        com2.enable()
+        com2.rx.fisica.flush()
         server_log = open('./logs/server.txt','w')
         
         print('Comunicação serial do servidor iniciada!\n')
@@ -41,12 +41,12 @@ def main():
         print('Aguardando tentativa de contato...')
         while handshake:
             # Fica em um loop enquanto não recebe handshake
-            while (com1.rx.getBufferLen() < 10):
+            while (com2.rx.getBufferLen() < 10):
                 pass
             
             server_log.write(time.strftime("%d/%m/%Y %H:%M:%S", time.localtime()) + " / receb / 1 / 10\n")
             
-            dtg, n_dtg = com1.getData(10)
+            dtg, n_dtg = com2.getData(10)
 
             type_message   = dtg[0]
             len_packs      = dtg[3]
@@ -69,9 +69,9 @@ def main():
 
         server_log.write(time.strftime("%d/%m/%Y %H:%M:%S", time.localtime()) + " / envio / 2 / 10\n")
 
-        com1.sendData(np.asarray(datagram))
+        com2.sendData(np.asarray(datagram))
         
-        while com1.tx.getStatus() != len(datagram):
+        while com2.tx.getStatus() != len(datagram):
             pass
 
         print('EUREKA!!! Contanto com client estabelecido\n')
@@ -86,11 +86,11 @@ def main():
             timer2 = time.time()
 
             # Aguarda recepção do head
-            while (com1.rx.getBufferLen() < 10):
+            while (com2.rx.getBufferLen() < 10):
                 pass
 
             # extraindo infos importantes
-            datagram, n_datagram = com1.getData(10)
+            datagram, n_datagram = com2.getData(10)
 
             type_message   = datagram[0]
             len_packs      = datagram[3]
@@ -103,7 +103,7 @@ def main():
             if (type_message == 3 and pack_receiving == counter and len_payload > 0):
                 print(f'Recebendo pacote {pack_receiving} de {len_packs}...')
                 
-                while (com1.rx.getBufferLen() < len_payload + 14):
+                while (com2.rx.getBufferLen() < len_payload + 14):
                     now = time.time()
                     # Se passar 20s no contador 2 e o pacote não for recebido,
                     # o servidor encerra comunicação
@@ -119,13 +119,13 @@ def main():
 
                         server_log.write(time.strftime("%d/%m/%Y %H:%M:%S", time.localtime()) + " / envio / 5 / 10\n")
 
-                        com1.sendData(np.asarray(datagram))
+                        com2.sendData(np.asarray(datagram))
 
-                        while com1.tx.getStatus() != len(datagram):
+                        while com2.tx.getStatus() != len(datagram):
                             pass
                         
                         # server_log.close()
-                        com1.disable()
+                        com2.disable()
                         return
 
                     # Se passar 2s no contador 1 e o pacote não for recebido,
@@ -140,15 +140,15 @@ def main():
 
                         server_log.write(time.strftime("%d/%m/%Y %H:%M:%S", time.localtime()) + " / envio / 4 / 10\n")
 
-                        com1.sendData(np.asarray(datagram))
+                        com2.sendData(np.asarray(datagram))
 
-                        while com1.tx.getStatus() != len(datagram):
+                        while com2.tx.getStatus() != len(datagram):
                             pass
 
                         timer1 = time.time()
 
                 # Quando receber todo o datagrama, extrai todas as infos
-                dtg, n_dtg = com1.getData(len_payload + 14)
+                dtg, n_dtg = com2.getData(len_payload + 14)
 
                 type_message   = dtg[0]
                 len_packs      = dtg[3]
@@ -170,9 +170,9 @@ def main():
 
                     server_log.write(time.strftime("%d/%m/%Y %H:%M:%S", time.localtime()) + " / envio / 4 / 10\n")
 
-                    com1.sendData(np.asarray(datagram))
+                    com2.sendData(np.asarray(datagram))
 
-                    while com1.tx.getStatus() != len(datagram):
+                    while com2.tx.getStatus() != len(datagram):
                         pass
 
                     counter += 1
@@ -189,9 +189,9 @@ def main():
 
                     server_log.write(time.strftime("%d/%m/%Y %H:%M:%S", time.localtime()) + " / receb / 6 / 10\n")
 
-                    com1.sendData(np.asarray(datagram))
+                    com2.sendData(np.asarray(datagram))
 
-                    while com1.tx.getStatus() != len(datagram):
+                    while com2.tx.getStatus() != len(datagram):
                         pass
             
             # Se chegou uma resposta "inesperada", solicita pacote novamente
@@ -206,9 +206,9 @@ def main():
 
                 server_log.write(time.strftime("%d/%m/%Y %H:%M:%S", time.localtime()) + " / receb / 6 / 10\n")
 
-                com1.sendData(np.asarray(datagram))
+                com2.sendData(np.asarray(datagram))
 
-                while com1.tx.getStatus() != len(datagram):
+                while com2.tx.getStatus() != len(datagram):
                     pass
 
         server_log.close()
@@ -217,18 +217,18 @@ def main():
         with open('./data/resp.png', 'wb') as file:
             file.write(data_received)
         
-        com1.disable()
+        com2.disable()
     
     except Exception as erro:
         print("ops! :-\\")
         print(erro)
         server_log.close()
-        com1.disable()
+        com2.disable()
 
     except KeyboardInterrupt:
         print("Fechamento forçado")
         server_log.close()
-        com1.disable()
+        com2.disable()
         
 if __name__ == "__main__":
     main()
